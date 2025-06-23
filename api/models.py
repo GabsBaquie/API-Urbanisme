@@ -50,10 +50,10 @@ class Zone(models.Model):
 class Idea(models.Model):
     """Idée d'amélioration proposée par un citoyen"""
     class CATEGORIES(models.TextChoices):
-        AMENAGEMENT = 'AMENAGEMENT', 'Aménagement'
-        ENVIRONNEMENT = 'ENVIRONNEMENT', 'Environnement'
-        TRANSPORT = 'TRANSPORT', 'Transport'
-        SOCIAL = 'SOCIAL', 'Social'
+        AMENAGEMENT = 'amenagement', 'Aménagement'
+        ENVIRONNEMENT = 'environnement', 'Environnement'
+        TRANSPORT = 'transport', 'Transport'
+        SOCIAL = 'social', 'Social'
 
     class STATUS(models.TextChoices):
         PROPOSED = 'proposed', 'Proposée'
