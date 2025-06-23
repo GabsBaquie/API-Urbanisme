@@ -310,6 +310,60 @@ POST /api/ideas/{id}/vote/
 DELETE /api/ideas/{id}/unvote/
 ```
 
+### Commentaires
+
+#### Liste des commentaires d'une idée
+```
+GET /api/ideas/{id}/comments/
+```
+
+#### Détail d'un commentaire
+```
+GET /api/comments/{id}/
+```
+
+#### Créer un commentaire
+```
+POST /api/ideas/{id}/comments/
+```
+```json
+{
+    "content": "Excellente idée ! Cela améliorerait vraiment la qualité de vie dans le quartier."
+}
+```
+
+#### Modifier un commentaire
+```
+PUT /api/comments/{id}/
+```
+```json
+{
+    "content": "Commentaire modifié"
+}
+```
+
+#### Supprimer un commentaire
+```
+DELETE /api/comments/{id}/
+```
+
+### Votes de commentaires
+
+#### Voter sur un commentaire
+```
+POST /api/comments/{id}/vote/
+```
+```json
+{
+    "is_positive": true
+}
+```
+
+#### Supprimer un vote sur un commentaire
+```
+DELETE /api/comments/{id}/unvote/
+```
+
 ## 🗄️ Modèles de données
 
 ### User
@@ -341,6 +395,18 @@ DELETE /api/ideas/{id}/unvote/
 - `user` : Utilisateur qui vote
 - `is_positive` : Vote positif ou négatif
 - `created_at` : Date du vote
+
+### Comment
+- `idea` : Idée commentée
+- `user` : Auteur du commentaire
+- `content` : Contenu du commentaire
+- `created_at` : Date de création
+- `updated_at` : Date de modification
+
+### CommentVote
+- `comment` : Commentaire voté
+- `user` : Utilisateur qui vote
+- `is_positive` : Vote positif ou négatif
 
 ## 🔧 Configuration
 

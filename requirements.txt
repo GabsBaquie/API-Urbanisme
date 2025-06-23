@@ -1,4 +1,10 @@
+# Django et extensions principales
+asgiref==3.8.1
 Django==5.2.3
-djangorestframework==3.16.0
 django-cors-headers==4.7.0
-djangorestframework-simplejwt==5.3.0 
+djangorestframework==3.16.0
+djangorestframework-simplejwt==5.3.0
+PyJWT==2.10.1
+setuptools==80.9.0
+sqlparse==0.5.3
+tzdata==2025.2

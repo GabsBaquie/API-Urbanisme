@@ -7,10 +7,11 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User, Zone, Idea, Vote
+from .models import User, Zone, Idea, Vote, Comment, CommentVote
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, ZoneSerializer,
-    IdeaSerializer, IdeaCreateSerializer, IdeaListSerializer, VoteSerializer
+    IdeaSerializer, IdeaCreateSerializer, IdeaListSerializer, VoteSerializer,
+    CommentSerializer, CommentCreateSerializer, CommentVoteSerializer
 )
 
 
@@ -215,6 +216,31 @@ class IdeaViewSet(viewsets.ModelViewSet):
         serializer = IdeaListSerializer(ideas, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['get', 'post'])
+    def comments(self, request, pk=None):
+        """Gère les commentaires d'une idée"""
+        idea = self.get_object()
+        
+        if request.method == 'GET':
+            # Récupérer tous les commentaires de l'idée
+            comments = idea.comments.all().order_by('-created_at')
+            serializer = CommentSerializer(comments, many=True, context={'request': request})
+            return Response(serializer.data)
+        
+        elif request.method == 'POST':
+            # Créer un nouveau commentaire
+            serializer = CommentCreateSerializer(
+                data=request.data, 
+                context={'request': request, 'idea': idea}
+            )
+            if serializer.is_valid():
+                comment = serializer.save()
+                return Response(
+                    CommentSerializer(comment, context={'request': request}).data,
+                    status=status.HTTP_201_CREATED
+                )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class VoteViewSet(viewsets.ModelViewSet):
     """ViewSet pour les votes"""
@@ -227,3 +253,105 @@ class VoteViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les commentaires"""
+    queryset = Comment.objects.all()
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return CommentCreateSerializer
+        return CommentSerializer
+
+    def get_queryset(self):
+        return Comment.objects.all().order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        # Seul l'auteur peut modifier son commentaire
+        if serializer.instance.user != self.request.user:
+            raise permissions.PermissionDenied("Vous ne pouvez modifier que vos propres commentaires.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        # Seul l'auteur peut supprimer son commentaire
+        if instance.user != self.request.user:
+            raise permissions.PermissionDenied("Vous ne pouvez supprimer que vos propres commentaires.")
+        instance.delete()
+
+    @action(detail=True, methods=['post'])
+    def vote(self, request, pk=None):
+        """Vote sur un commentaire"""
+        comment = self.get_object()
+        is_positive = request.data.get('is_positive', True)
+        
+        # Vérifier si l'utilisateur a déjà voté
+        existing_vote = CommentVote.objects.filter(comment=comment, user=request.user).first()
+        
+        if existing_vote:
+            # Modifier le vote existant
+            existing_vote.is_positive = is_positive
+            existing_vote.save()
+            message = "Vote modifié"
+        else:
+            # Créer un nouveau vote
+            CommentVote.objects.create(
+                comment=comment,
+                user=request.user,
+                is_positive=is_positive
+            )
+            message = "Vote ajouté"
+        
+        return Response({
+            'message': message,
+            'comment': CommentSerializer(comment, context={'request': request}).data
+        })
+
+    @action(detail=True, methods=['delete'])
+    def unvote(self, request, pk=None):
+        """Supprime le vote de l'utilisateur sur un commentaire"""
+        comment = self.get_object()
+        
+        try:
+            vote = CommentVote.objects.get(comment=comment, user=request.user)
+            vote.delete()
+            
+            return Response({
+                'message': 'Vote supprimé',
+                'comment': CommentSerializer(comment, context={'request': request}).data
+            })
+        except CommentVote.DoesNotExist:
+            return Response({
+                'error': 'Aucun vote trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+class CommentVoteViewSet(viewsets.ModelViewSet):
+    """ViewSet pour les votes de commentaires"""
+    queryset = CommentVote.objects.all()
+    serializer_class = CommentVoteSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        if self.request.user.is_authenticated:
+            return CommentVote.objects.filter(user=self.request.user)
+        return CommentVote.objects.none()
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        # Seul l'utilisateur peut modifier son vote
+        if serializer.instance.user != self.request.user:
+            raise permissions.PermissionDenied("Vous ne pouvez modifier que vos propres votes.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        # Seul l'utilisateur peut supprimer son vote
+        if instance.user != self.request.user:
+            raise permissions.PermissionDenied("Vous ne pouvez supprimer que vos propres votes.")
+        instance.delete()
