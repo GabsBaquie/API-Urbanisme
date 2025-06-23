@@ -2,11 +2,4 @@
 Django==5.2.3
 djangorestframework==3.16.0
 django-cors-headers==4.7.0
-
-# Authentification JWT (déjà installé)
-djangorestframework-simplejwt==5.5.0
-PyJWT==2.9.0
-
-# Dépendances système Django
-asgiref==3.8.1
-sqlparse==0.5.3
+djangorestframework-simplejwt==5.3.0 
