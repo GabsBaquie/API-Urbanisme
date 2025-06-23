@@ -3,7 +3,6 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
-# TODO: add a user model
 class User(AbstractUser):
     """Modèle utilisateur étendu"""
     email = models.EmailField(unique=True)
@@ -17,7 +16,6 @@ class User(AbstractUser):
     def __str__(self):
         return self.email
 
-# TODO: add a zone model
 class Zone(models.Model):
     """Zone géographique (quartier, rue, etc.)"""
     ZONE_TYPES = [
@@ -41,7 +39,6 @@ class Zone(models.Model):
     def __str__(self):
         return f"{self.name} ({self.get_zone_type_display()})"
 
-# TODO: add a idea model
 class Idea(models.Model):
     """Idée d'amélioration proposée par un citoyen"""
     CATEGORIES = [
@@ -98,7 +95,6 @@ class Idea(models.Model):
         self.negative_votes = votes.filter(is_positive=False).count()
         self.save()
 
-# TODO: add a vote model
 class Vote(models.Model):
     """Vote sur une idée"""
     idea = models.ForeignKey(Idea, on_delete=models.CASCADE, related_name='votes')
@@ -119,7 +115,6 @@ class Vote(models.Model):
         super().save(*args, **kwargs)
         self.idea.update_vote_stats()
 
-# TODO: add a comment model
 class Comment(models.Model):
     """Commentaire sur une idée"""
     idea = models.ForeignKey(Idea, on_delete=models.CASCADE, related_name='comments')
@@ -131,7 +126,6 @@ class Comment(models.Model):
     def __str__(self):
         return f"Commentaire de {self.user.username} sur {self.idea.title}"
 
-# TODO: add a comment vote model
 class CommentVote(models.Model):
     """Vote sur un commentaire"""
     comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name='votes')
