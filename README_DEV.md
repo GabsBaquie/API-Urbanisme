@@ -59,7 +59,7 @@ python manage.py runserver
 - **Backend** : Django 5.2.3
 - **API** : Django REST Framework 3.16.0
 - **Base de données** : SQLite (dev) / PostgreSQL (prod)
-- **Authentification** : Session Django
+- **Authentification** : JWT (djangorestframework-simplejwt)
 - **CORS** : django-cors-headers
 
 ### Structure du projet
@@ -112,9 +112,42 @@ Content-Type: application/json
 }
 ```
 
+**Réponse :**
+```json
+{
+    "message": "Connexion réussie",
+    "user": {
+        "id": 1,
+        "username": "dev_user",
+        "email": "dev@example.com",
+        "is_anonymous": false,
+        "created_at": "2024-01-01T00:00:00Z"
+    },
+    "tokens": {
+        "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+        "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+    }
+}
+```
+
+#### Rafraîchir le token
+```http
+POST /api/auth/token/refresh/
+Content-Type: application/json
+
+{
+    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+}
+```
+
 #### Déconnexion
 ```http
 POST /api/auth/logout/
+Content-Type: application/json
+
+{
+    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+}
 ```
 
 ### Utilisateurs
@@ -122,7 +155,7 @@ POST /api/auth/logout/
 #### Profil utilisateur
 ```http
 GET /api/users/me/
-Authorization: Session
+Authorization: Bearer <access_token>
 ```
 
 ### Idées
@@ -163,7 +196,7 @@ GET /api/ideas/{id}/
 ```http
 POST /api/ideas/
 Content-Type: application/json
-Authorization: Session
+Authorization: Bearer <access_token>
 
 {
     "title": "Nouvelle idée",
@@ -186,7 +219,7 @@ GET /api/ideas/near_me/?lat=48.8566&lng=2.3522&radius=1.0
 ```http
 POST /api/ideas/{id}/vote/
 Content-Type: application/json
-Authorization: Session
+Authorization: Bearer <access_token>
 
 {
     "is_positive": true
@@ -196,7 +229,7 @@ Authorization: Session
 #### Supprimer un vote
 ```http
 DELETE /api/ideas/{id}/unvote/
-Authorization: Session
+Authorization: Bearer <access_token>
 ```
 
 ### Zones
@@ -293,8 +326,8 @@ class Vote(models.Model):
 ## 🔐 Authentification
 
 ### Méthode
-- **Session Django** : Authentification par session
-- **CSRF** : Protection CSRF activée
+- **JWT** : Authentification par tokens (djangorestframework-simplejwt)
+- **Tokens** : Access token (1h) + Refresh token (1j)
 - **Permissions** : Basées sur les rôles Django
 
 ### Permissions par défaut
@@ -306,8 +339,26 @@ class Vote(models.Model):
 ```javascript
 const headers = {
   'Content-Type': 'application/json',
-  'X-CSRFToken': getCookie('csrftoken'), // Pour les requêtes POST/PUT/DELETE
+  'Authorization': 'Bearer <access_token>', // Pour les requêtes authentifiées
 };
+```
+
+### Workflow d'authentification
+1. **Connexion** : POST `/api/auth/login/` → reçoit access + refresh tokens
+2. **Utilisation** : Inclure access token dans header `Authorization: Bearer <token>`
+3. **Rafraîchissement** : Quand access token expire, POST `/api/auth/token/refresh/`
+4. **Déconnexion** : POST `/api/auth/logout/` avec refresh token
+
+### Configuration JWT
+```python
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 ```
 
 ## 🛠️ Développement
@@ -410,8 +461,23 @@ curl -X POST http://localhost:8000/api/auth/login/ \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"test123"}'
 
-# Test récupération idées
+# Test récupération idées (publique)
 curl http://localhost:8000/api/ideas/
+
+# Test récupération profil (authentifié)
+curl -H "Authorization: Bearer <access_token>" \
+     http://localhost:8000/api/users/me/
+
+# Test création d'idée (authentifié)
+curl -X POST http://localhost:8000/api/ideas/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
+  -d '{"title":"Test","description":"Test","category":"other","latitude":48.8566,"longitude":2.3522,"zone":1}'
+
+# Test rafraîchissement de token
+curl -X POST http://localhost:8000/api/auth/token/refresh/ \
+  -H "Content-Type: application/json" \
+  -d '{"refresh":"<refresh_token>"}'
 ```
 
 ## 🚀 Déploiement
@@ -422,6 +488,7 @@ curl http://localhost:8000/api/ideas/
 export SECRET_KEY="your-production-secret-key"
 export DEBUG=False
 export ALLOWED_HOSTS="your-domain.com"
+export JWT_SECRET_KEY="your-jwt-secret-key"  # Optionnel
 
 # 2. Base de données PostgreSQL
 pip install psycopg2-binary
@@ -529,9 +596,10 @@ logger.error("Error message")
 
 ### Sécurité
 - Validation côté serveur
-- Protection CSRF
+- Authentification JWT sécurisée
 - Rate limiting
 - Audit des actions sensibles
+- Rotation automatique des refresh tokens
 
 ## 🆘 Support
 
