@@ -5,7 +5,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, Zone, Idea, Vote
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, ZoneSerializer,
@@ -47,7 +48,7 @@ class UserRegistrationView(APIView):
 
 
 class UserLoginView(APIView):
-    """Vue pour la connexion des utilisateurs"""
+    """Vue pour la connexion des utilisateurs avec JWT"""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -61,10 +62,14 @@ class UserLoginView(APIView):
 
         user = authenticate(username=email, password=password)
         if user:
-            login(request, user)
+            refresh = RefreshToken.for_user(user)
             return Response({
                 'message': 'Connexion réussie',
-                'user': UserSerializer(user).data
+                'user': UserSerializer(user).data,
+                'tokens': {
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                }
             })
         else:
             return Response({
@@ -73,11 +78,12 @@ class UserLoginView(APIView):
 
 
 class UserLogoutView(APIView):
-    """Vue pour la déconnexion des utilisateurs"""
+    """Vue pour la déconnexion des utilisateurs avec JWT"""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        logout(request)
+        # Avec JWT, la déconnexion se fait côté client en supprimant le token
+        # Optionnellement, on peut blacklister le token
         return Response({'message': 'Déconnexion réussie'})
 
 
