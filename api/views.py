@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User, Zone, Idea, Vote
+from .models import User, Zone, Idea, Vote, Comment, CommentVote
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, ZoneSerializer,
     IdeaSerializer, IdeaCreateSerializer, IdeaListSerializer, VoteSerializer,
