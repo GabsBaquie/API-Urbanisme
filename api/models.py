@@ -56,11 +56,11 @@ class Idea(models.Model):
         SOCIAL = 'SOCIAL', 'Social'
 
     class STATUS(models.TextChoices):
-        PROPOSED = 'PROPOSED', 'Proposée'
-        UNDER_REVIEW = 'UNDER_REVIEW', 'En cours d\'examen'
-        APPROVED = 'APPROVED', 'Approuvée'
-        REJECTED = 'REJECTED', 'Rejetée'
-        IMPLEMENTED = 'IMPLEMENTED', 'Implémentée'
+        PROPOSED = 'proposed', 'Proposée'
+        UNDER_REVIEW = 'under_review', 'En cours d\'examen'
+        APPROVED = 'approved', 'Approuvée'
+        REJECTED = 'rejected', 'Rejetée'
+        IMPLEMENTED = 'implemented', 'Implémentée'
 
     title = models.CharField(max_length=200)
     description = models.TextField()
