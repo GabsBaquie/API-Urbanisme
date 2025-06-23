@@ -10,30 +10,3 @@ PyJWT==2.9.0
 # Dépendances système Django
 asgiref==3.8.1
 sqlparse==0.5.3
-
-# Dépendances de développement (optionnelles)
-# Décommentez les lignes suivantes si vous voulez les utiliser
-
-# Tests et qualité de code
-# pytest==7.4.3
-# pytest-django==4.7.0
-# coverage==7.3.2
-
-# Formatage et linting
-# black==23.11.0
-# flake8==6.1.0
-# isort==5.12.0
-
-# Variables d'environnement
-# python-decouple==3.8
-
-# Base de données (pour la production)
-# psycopg2-binary==2.9.9  # PostgreSQL
-# mysqlclient==2.2.0      # MySQL
-
-# API documentation
-# drf-yasg==1.21.7        # Swagger/OpenAPI
-
-# Sécurité
-# django-filter==23.5
-# django-ratelimit==4.1.0 
