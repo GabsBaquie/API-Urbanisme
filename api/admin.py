@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Zone, Idea, Vote
+from .models import User, Zone, Idea, Vote, Comment, CommentVote
 
 
 @admin.register(User)
@@ -35,7 +35,7 @@ class ZoneAdmin(admin.ModelAdmin):
 @admin.register(Idea)
 class IdeaAdmin(admin.ModelAdmin):
     """Administration des idées"""
-    list_display = ['title', 'category', 'status', 'author', 'zone', 'vote_count', 'created_at']
+    list_display = ['title', 'category', 'status', 'author', 'zone', 'vote_count', 'comment_count', 'created_at']
     list_filter = ['category', 'status', 'created_at', 'zone']
     search_fields = ['title', 'description', 'author__email', 'zone__name']
     ordering = ['-created_at']
@@ -60,6 +60,10 @@ class IdeaAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    def comment_count(self, obj):
+        return obj.comments.count()
+    comment_count.short_description = 'Nombre de commentaires'
 
 
 @admin.register(Vote)
@@ -70,3 +74,30 @@ class VoteAdmin(admin.ModelAdmin):
     search_fields = ['idea__title', 'user__email']
     ordering = ['-created_at']
     readonly_fields = ['created_at']
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    """Administration des commentaires"""
+    list_display = ['idea', 'user', 'content_preview', 'vote_count', 'created_at']
+    list_filter = ['created_at', 'updated_at']
+    search_fields = ['content', 'idea__title', 'user__email']
+    ordering = ['-created_at']
+    readonly_fields = ['created_at', 'updated_at']
+    
+    def content_preview(self, obj):
+        return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
+    content_preview.short_description = 'Contenu'
+    
+    def vote_count(self, obj):
+        return obj.votes.count()
+    vote_count.short_description = 'Nombre de votes'
+
+
+@admin.register(CommentVote)
+class CommentVoteAdmin(admin.ModelAdmin):
+    """Administration des votes de commentaires"""
+    list_display = ['comment', 'user', 'is_positive']
+    list_filter = ['is_positive']
+    search_fields = ['comment__content', 'user__email']
+    ordering = ['-comment__created_at']

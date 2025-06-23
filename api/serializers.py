@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Zone, Idea, Vote
+from .models import User, Zone, Idea, Vote, Comment, CommentVote
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -55,6 +55,56 @@ class VoteSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'created_at']
 
 
+class CommentVoteSerializer(serializers.ModelSerializer):
+    """Sérialiseur pour les votes de commentaires"""
+    user_email = serializers.CharField(source='user.email', read_only=True)
+
+    class Meta:
+        model = CommentVote
+        fields = ['id', 'comment', 'user', 'user_email', 'is_positive']
+        read_only_fields = ['id', 'user']
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """Sérialiseur pour les commentaires"""
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    votes = CommentVoteSerializer(many=True, read_only=True)
+    user_vote = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'idea', 'user', 'user_email', 'user_username', 'content', 
+                 'created_at', 'updated_at', 'votes', 'user_vote']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'votes', 'user_vote']
+
+    def get_user_vote(self, obj):
+        """Récupère le vote de l'utilisateur connecté sur ce commentaire"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            try:
+                vote = obj.votes.get(user=request.user)
+                return {
+                    'id': vote.id,
+                    'is_positive': vote.is_positive
+                }
+            except CommentVote.DoesNotExist:
+                return None
+        return None
+
+
+class CommentCreateSerializer(serializers.ModelSerializer):
+    """Sérialiseur pour la création de commentaires"""
+    class Meta:
+        model = Comment
+        fields = ['content']
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        validated_data['idea'] = self.context['idea']
+        return super().create(validated_data)
+
+
 class IdeaSerializer(serializers.ModelSerializer):
     """Sérialiseur pour les idées"""
     author_email = serializers.CharField(source='author.email', read_only=True)
@@ -62,6 +112,7 @@ class IdeaSerializer(serializers.ModelSerializer):
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     votes = VoteSerializer(many=True, read_only=True)
+    comments = CommentSerializer(many=True, read_only=True)
     user_vote = serializers.SerializerMethodField()
 
     class Meta:
@@ -69,9 +120,9 @@ class IdeaSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'description', 'category', 'category_display', 'status', 
                  'status_display', 'latitude', 'longitude', 'author', 'author_email', 
                  'zone', 'zone_name', 'created_at', 'vote_count', 'positive_votes', 
-                 'negative_votes', 'votes', 'user_vote']
+                 'negative_votes', 'votes', 'comments', 'user_vote']
         read_only_fields = ['id', 'author', 'created_at', 'vote_count', 'positive_votes', 
-                           'negative_votes', 'votes', 'user_vote']
+                           'negative_votes', 'votes', 'comments', 'user_vote']
 
     def get_user_vote(self, obj):
         """Récupère le vote de l'utilisateur connecté sur cette idée"""

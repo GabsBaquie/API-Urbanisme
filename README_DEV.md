@@ -197,6 +197,66 @@ Authorization: Session
 ```http
 DELETE /api/ideas/{id}/unvote/
 Authorization: Session
+Authorization: Bearer <access_token>
+```
+
+### Commentaires
+
+#### Liste des commentaires d'une idée
+```http
+GET /api/ideas/{id}/comments/
+```
+
+#### Détail d'un commentaire
+```http
+GET /api/comments/{id}/
+```
+
+#### Créer un commentaire
+```http
+POST /api/ideas/{id}/comments/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+    "content": "Excellente idée ! Cela améliorerait vraiment la qualité de vie dans le quartier."
+}
+```
+
+#### Modifier un commentaire
+```http
+PUT /api/comments/{id}/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+    "content": "Commentaire modifié"
+}
+```
+
+#### Supprimer un commentaire
+```http
+DELETE /api/comments/{id}/
+Authorization: Bearer <access_token>
+```
+
+### Votes de commentaires
+
+#### Voter sur un commentaire
+```http
+POST /api/comments/{id}/vote/
+Content-Type: application/json
+Authorization: Bearer <access_token>
+
+{
+    "is_positive": true
+}
+```
+
+#### Supprimer un vote sur un commentaire
+```http
+DELETE /api/comments/{id}/unvote/
+Authorization: Bearer <access_token>
 ```
 
 ### Zones
@@ -288,6 +348,27 @@ class Vote(models.Model):
     
     class Meta:
         unique_together = ['idea', 'user']
+```
+
+### Comment
+```python
+class Comment(models.Model):
+    idea = models.ForeignKey(Idea, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+```
+
+### CommentVote
+```python
+class CommentVote(models.Model):
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name='votes')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comment_votes')
+    is_positive = models.BooleanField()
+    
+    class Meta:
+        unique_together = ['comment', 'user']
 ```
 
 ## 🔐 Authentification
@@ -412,6 +493,33 @@ curl -X POST http://localhost:8000/api/auth/login/ \
 
 # Test récupération idées
 curl http://localhost:8000/api/ideas/
+
+# Test récupération profil (authentifié)
+curl -H "Authorization: Bearer <access_token>" \
+     http://localhost:8000/api/users/me/
+
+# Test création d'idée (authentifié)
+curl -X POST http://localhost:8000/api/ideas/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
+  -d '{"title":"Test","description":"Test","category":"other","latitude":48.8566,"longitude":2.3522,"zone":1}'
+
+# Test création de commentaire (authentifié)
+curl -X POST http://localhost:8000/api/ideas/1/comments/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
+  -d '{"content":"Excellente idée !"}'
+
+# Test vote sur commentaire (authentifié)
+curl -X POST http://localhost:8000/api/comments/1/vote/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
+  -d '{"is_positive":true}'
+
+# Test rafraîchissement de token
+curl -X POST http://localhost:8000/api/auth/token/refresh/ \
+  -H "Content-Type: application/json" \
+  -d '{"refresh":"<refresh_token>"}'
 ```
 
 ## 🚀 Déploiement
@@ -549,4 +657,4 @@ logger.error("Error message")
 
 **Version** : 1.0.0  
 **Dernière mise à jour** : 2025-06-23  
-**Mainteneur** : Équipe de développement 
+**Mainteneur** : Équipe de développement
