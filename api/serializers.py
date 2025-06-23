@@ -29,7 +29,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(**validated_data)
         return user
 
-
+#TODO: METTRE A JOUR LE SERIALIZER POUR LES COMMENTAIRES AVEC LES NOMS ETC voir avec gabi
 class ZoneSerializer(serializers.ModelSerializer):
     """Sérialiseur pour les zones géographiques"""
     zone_type_display = serializers.CharField(source='get_zone_type_display', read_only=True)
@@ -47,36 +47,55 @@ class ZoneSerializer(serializers.ModelSerializer):
 
 class VoteSerializer(serializers.ModelSerializer):
     """Sérialiseur pour les votes"""
-    user_email = serializers.CharField(source='user.email', read_only=True)
+    user = serializers.SerializerMethodField()
+
+    def get_user(self, obj: Vote):
+        """Récupère l'utilisateur du vote"""
+        return {
+            'username': obj.user.username,
+            'name': obj.user.get_full_name(),
+        }
+
 
     class Meta:
         model = Vote
-        fields = ['id', 'idea', 'user', 'user_email', 'is_positive', 'created_at']
+        fields = ['id', 'idea', 'user', 'is_positive', 'created_at']
         read_only_fields = ['id', 'user', 'created_at']
 
 
 class CommentVoteSerializer(serializers.ModelSerializer):
     """Sérialiseur pour les votes de commentaires"""
-    user_email = serializers.CharField(source='user.email', read_only=True)
+    user = serializers.SerializerMethodField()
 
+    def get_user(self, obj: CommentVote):
+        """Récupère l'utilisateur du vote de commentaire"""
+        return {
+            'username': obj.user.username,
+            'name': obj.user.get_full_name(),
+        }
     class Meta:
         model = CommentVote
-        fields = ['id', 'comment', 'user', 'user_email', 'is_positive']
+        fields = ['id', 'comment', 'user', 'is_positive']
         read_only_fields = ['id', 'user']
 
 
 class CommentSerializer(serializers.ModelSerializer):
     """Sérialiseur pour les commentaires"""
-    user_email = serializers.CharField(source='user.email', read_only=True)
-    user_username = serializers.CharField(source='user.username', read_only=True)
+    user = serializers.SerializerMethodField()
     votes = CommentVoteSerializer(many=True, read_only=True)
-    user_vote = serializers.SerializerMethodField()
+
+    def get_user(self, obj: Comment):
+        """Récupère les informations de l'utilisateur du commentaire"""
+        return {
+            'username': obj.user.username,
+            'name': obj.user.get_full_name(),
+        }
 
     class Meta:
         model = Comment
-        fields = ['id', 'idea', 'user', 'user_email', 'user_username', 'content', 
-                 'created_at', 'updated_at', 'votes', 'user_vote']
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'votes', 'user_vote']
+        fields = ['id', 'idea', 'user', 'content', 
+                 'created_at', 'updated_at', 'votes']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'votes']
 
     def get_user_vote(self, obj):
         """Récupère le vote de l'utilisateur connecté sur ce commentaire"""
@@ -107,37 +126,40 @@ class CommentCreateSerializer(serializers.ModelSerializer):
 
 class IdeaSerializer(serializers.ModelSerializer):
     """Sérialiseur pour les idées"""
-    author_email = serializers.CharField(source='author.email', read_only=True)
-    zone_name = serializers.CharField(source='zone.name', read_only=True)
-    category_display = serializers.CharField(source='get_category_display', read_only=True)
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
     votes = VoteSerializer(many=True, read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
-    user_vote = serializers.SerializerMethodField()
+    position = serializers.SerializerMethodField()
+    votesStats = serializers.SerializerMethodField()
+    author = serializers.SerializerMethodField()
+    zone = ZoneSerializer(read_only=True)
+
+    def get_author(self, obj: Idea):
+        """Récupère les informations de l'auteur de l'idée"""
+        return {
+            'username': obj.author.username,
+            'name': obj.author.get_full_name()
+        }
+
+    def get_position(self, obj : Idea):
+        return {
+            'lat': obj.latitude,
+            'lng': obj.longitude
+        }
+    
+    def get_votesStats(self, obj: Idea):
+        """Récupère les statistiques de vote pour l'idée"""
+        return {
+            'total': obj.vote_count,
+            'up': obj.positive_votes,
+            'down': obj.negative_votes
+        }
 
     class Meta:
         model = Idea
-        fields = ['id', 'title', 'description', 'category', 'category_display', 'status', 
-                 'status_display', 'latitude', 'longitude', 'author', 'author_email', 
-                 'zone', 'zone_name', 'created_at', 'vote_count', 'positive_votes', 
-                 'negative_votes', 'votes', 'comments', 'user_vote']
-        read_only_fields = ['id', 'author', 'created_at', 'vote_count', 'positive_votes', 
-                           'negative_votes', 'votes', 'comments', 'user_vote']
-
-    def get_user_vote(self, obj):
-        """Récupère le vote de l'utilisateur connecté sur cette idée"""
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            try:
-                vote = obj.votes.get(user=request.user)
-                return {
-                    'id': vote.id,
-                    'is_positive': vote.is_positive,
-                    'created_at': vote.created_at
-                }
-            except Vote.DoesNotExist:
-                return None
-        return None
+        fields = ['id', 'title', 'description', 'category', 'status', 
+                'position', 'author', 'zone', 'created_at', 'votesStats', 
+                'votes', 'comments']
+        read_only_fields = ['id', 'author', 'created_at', 'votes', 'comments']
 
 
 class IdeaCreateSerializer(serializers.ModelSerializer):
@@ -153,13 +175,38 @@ class IdeaCreateSerializer(serializers.ModelSerializer):
 
 class IdeaListSerializer(serializers.ModelSerializer):
     """Sérialiseur simplifié pour la liste des idées"""
-    author_email = serializers.CharField(source='author.email', read_only=True)
-    zone_name = serializers.CharField(source='zone.name', read_only=True)
-    category_display = serializers.CharField(source='get_category_display', read_only=True)
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    position = serializers.SerializerMethodField()
+    author = serializers.SerializerMethodField()
+    votesStats = serializers.SerializerMethodField()
+    zone = ZoneSerializer(read_only=True)
+    comments = CommentSerializer(many=True, read_only=True)
+
+
+
+
+    def get_author(self, obj: Idea):
+        """Récupère les informations de l'auteur de l'idée"""
+        return {
+            'username': obj.author.username,
+            'name': obj.author.get_full_name()
+        }
+    
+    def get_position(self, obj: Idea):
+        return {
+            'lat': obj.latitude,
+            'lng': obj.longitude
+        }
+    
+    def get_votesStats(self, obj: Idea):
+        """Récupère les statistiques de vote pour l'idée"""
+        return {
+            'total': obj.vote_count,
+            'up': obj.positive_votes,
+            'down': obj.negative_votes
+        }
+
 
     class Meta:
         model = Idea
-        fields = ['id', 'title', 'category', 'category_display', 'status', 'status_display',
-                 'latitude', 'longitude', 'author_email', 'zone_name', 'created_at',
-                 'vote_count', 'positive_votes', 'negative_votes'] 
+        fields = ['id', 'title', 'description', 'category', 'status', 'author', 'position',
+                 'zone','votesStats', 'comments', 'created_at',] 
