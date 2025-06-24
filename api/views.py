@@ -93,7 +93,18 @@ class ZoneViewSet(viewsets.ModelViewSet):
     queryset = Zone.objects.all()
     serializer_class = ZoneSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
+    
+    """Récupère tous les types d'une zone"""
+    def get_queryset(self):
+        queryset = Zone.objects.all()
+        zone_type = self.request.query_params.get('zone_type')
+        name = self.request.query_params.get('name')
+        if zone_type:
+            queryset = queryset.filter(zone_type=zone_type)
+        if name:
+            queryset = queryset.filter(name__icontains=name)
+        return queryset
+    
     @action(detail=True, methods=['get'])
     def ideas(self, request, pk=None):
         """Récupère toutes les idées d'une zone"""
@@ -248,8 +259,18 @@ class VoteViewSet(viewsets.ModelViewSet):
     serializer_class = VoteSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    """Filtre par votes de l'utilisateur connecté et filtre par idées"""
+    queryset = Vote.objects.all()
+    serializer_class = VoteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
     def get_queryset(self):
-        return Vote.objects.filter(user=self.request.user)
+        queryset = Vote.objects.filter(user=self.request.user)
+        idea_id = self.request.query_params.get('idea_id', None)
+        if idea_id:
+            queryset = queryset.filter(idea_id=idea_id)
+        return queryset
+    
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
