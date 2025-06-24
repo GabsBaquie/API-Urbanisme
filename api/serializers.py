@@ -70,6 +70,7 @@ class CommentVoteSerializer(serializers.ModelSerializer):
     def get_user(self, obj: CommentVote):
         """Récupère l'utilisateur du vote de commentaire"""
         return {
+            'id': obj.user.id, # type: ignore , l'id de l'utilisateur existe bien
             'username': obj.user.username,
             'name': obj.user.get_full_name(),
         }
