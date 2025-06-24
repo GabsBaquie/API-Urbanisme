@@ -68,8 +68,8 @@ class Idea(models.Model):
     status = models.CharField(choices=STATUS, default=STATUS.PROPOSED)
     
     # Géolocalisation
-    latitude = models.DecimalField(max_digits=9, decimal_places=6)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    latitude = models.DecimalField(max_digits=25, decimal_places=20)
+    longitude = models.DecimalField(max_digits=25, decimal_places=20)
     
     # Relations
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ideas')
