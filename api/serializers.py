@@ -29,7 +29,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(**validated_data)
         return user
 
-#TODO: METTRE A JOUR LE SERIALIZER POUR LES COMMENTAIRES AVEC LES NOMS ETC voir avec gabi
 class ZoneSerializer(serializers.ModelSerializer):
     """Sérialiseur pour les zones géographiques"""
     zone_type_display = serializers.CharField(source='get_zone_type_display', read_only=True)
@@ -52,6 +51,7 @@ class VoteSerializer(serializers.ModelSerializer):
     def get_user(self, obj: Vote):
         """Récupère l'utilisateur du vote"""
         return {
+            'id': obj.user.id, # type: ignore , l'id de l'utilisateur existe bien
             'username': obj.user.username,
             'name': obj.user.get_full_name(),
         }
@@ -87,6 +87,7 @@ class CommentSerializer(serializers.ModelSerializer):
     def get_user(self, obj: Comment):
         """Récupère les informations de l'utilisateur du commentaire"""
         return {
+            'id': obj.user.id, # type: ignore , l'id de l'utilisateur existe bien
             'username': obj.user.username,
             'name': obj.user.get_full_name(),
         }
